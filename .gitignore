@@ -39,11 +39,33 @@ vignettes/*.pdf
 # R Environment Variables
 .Renviron
 
-# pkgdown site
-docs/
-
 # translation temp files
 po/*~
 
 # RStudio Connect folder
 rsconnect/
+
+# quarto pages
+
+/.quarto/
+
+# ignore folder
+
+/ignore
+
+# other files
+.DS_Store
+
+# Microsoft Office temporary lock files (Matches ~$DocumentName.docx, etc.)
+~$*
+
+# Word temporary and auto-backup files
+*.tmp
+Backup of *.doc*
+
+# Excel backup files
+*.xlk
+
+# Visio autosave files
+*.~vsd*
+

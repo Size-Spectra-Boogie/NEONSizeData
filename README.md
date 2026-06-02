@@ -1,2 +1,13 @@
+
+<!-- README.md is generated from README.Rmd. Please edit that file -->
+
 # NEONSizeData
-This repository contains automated processes to download and merge datasets from the National Ecological Observatory Network (NEON) into standardized formats for the analysis of size spectra.
+
+<!-- badges: start -->
+
+<!-- badges: end -->
+
+The goal of NEONSizeData is to automate the download, merge, and export
+of biological data from the National Ecological Observatory Network
+(NEON). The processes performed are outlined in the associated webpage
+\[\].
