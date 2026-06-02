@@ -1,0 +1,24 @@
+project:
+  type: website
+  output-dir: docs
+
+website:
+  title: "NEONSizeData"
+  navbar:
+    left:
+      - text: "Home"
+        file: index.qmd
+      - text: "Initial Data Setup"
+        file: initiate-db.qmd
+    right:
+      - icon: github
+        href: https://github.com/Size-Spectra-Boogie/NEONSizeData
+
+format:
+  html:
+    theme:
+      - cosmo
+      - brand
+    css: styles.css
+
+editor: visual
