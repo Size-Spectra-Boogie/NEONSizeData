@@ -69,3 +69,4 @@ Backup of *.doc*
 # Visio autosave files
 *.~vsd*
 
+data/database-files/
