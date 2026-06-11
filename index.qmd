@@ -3,3 +3,4 @@ title: "index"
 format: html
 ---
 
+This repository maintains the working data products for the analysis of size spectra on streams of the National Ecological Observatory Network (NEON) performed by the J^3^ Ecology lab groups. Specific methods for each data product are found maintained through [NEON](https://www.neonscience.org/). Project-specific data management workflows and analytical methods for the derived data products are outlined in subsequent pages.

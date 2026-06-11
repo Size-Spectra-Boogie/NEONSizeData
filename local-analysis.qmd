@@ -1,0 +1,10 @@
+---
+title: "Tutorial to access database for local analysis"
+format: html
+---
+
+Purpose
+
+------------------------------------------------------------------------
+
+This document steps through the procedure to access the maintained databases for project-associated analyses.

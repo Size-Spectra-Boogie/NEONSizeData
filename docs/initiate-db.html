@@ -20,6 +20,40 @@ ul.task-list li input[type="checkbox"] {
   margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
   vertical-align: middle;
 }
+/* CSS for syntax highlighting */
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { display: inline-block; text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
 </style>
 
 
@@ -137,8 +171,138 @@ ul.task-list li input[type="checkbox"] {
 </header>
 
 
+<section id="introduction" class="level2">
+<h2 class="anchored" data-anchor-id="introduction">Introduction</h2>
+<p>This script outlines the process to automate the updating of a duckdb database for new file released by NEON. This process uses the <code>neonstore</code> package to manage data file download and storage for NEON data releases. The database of up-to-date files are stored within the <code>data/database-files/</code> folder. The updating of data files will be automated approximately every 6 months through github actions. This will allow locally running scripts to convert the data into usable formats for size spectra analysis.</p>
+<p>To establish the initial database <code>neonstore</code> was used to download stream macroinvertebrate and fish data products. We first set the local database directory (e.g., C:/Users/jj0895/OneDrive - UNT System/Projects/Size-Spectra-Boogie/NEONSizeData/data/database-files) and pass this directly to the <code>neon_download()</code> function.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(neonstore)</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(arrow)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Using the <code>neon_download()</code> function we can automate the download into a pre-existing folder using established credentials. In the automated script, this is handled with the env variable <code>${{ github.workspace}}/data/database-files</code>. The data products for download are controlled with the <code>dps</code> object. Then they are added to the database with <code>neon_store()</code></p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>streamsites<span class="ot">=</span><span class="fu">c</span>(<span class="st">"HOPB"</span>, <span class="st">"LEWI"</span>, <span class="st">"POSE"</span>, <span class="st">"CUPE"</span>,</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>              <span class="st">"GUIL"</span>, <span class="st">"KING"</span>, <span class="st">"MCDI"</span>, <span class="st">"LECO"</span>,</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>              <span class="st">"WALK"</span>, <span class="st">"MAYF"</span>, <span class="st">"ARIK"</span>, <span class="st">"BLUE"</span>,</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>              <span class="st">"PRIN"</span>, <span class="st">"BLDE"</span>, <span class="st">"COMO"</span>, <span class="st">"WLOU"</span>,</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>              <span class="st">"SYCA"</span>, <span class="st">"REDB"</span>, <span class="st">"MART"</span>, <span class="st">"MCRA"</span>,</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>              <span class="st">"BIGC"</span>, <span class="st">"TECR"</span>, <span class="st">"OKSR"</span>, <span class="st">"CARI"</span>)</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>db_path <span class="ot">=</span> here<span class="sc">::</span><span class="fu">here</span>(<span class="st">'data/database-files/'</span>)</span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>dps <span class="ot">=</span> <span class="fu">c</span>(<span class="st">"DP1.20120.001"</span>,<span class="st">"DP1.20107.001"</span>,<span class="st">"DP1.20190.001"</span>)</span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a><span class="fu">neon_download</span>(<span class="at">product =</span> dps,</span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>              <span class="at">dir =</span> db_path)</span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a><span class="fu">neon_store</span>(<span class="at">dir =</span> here<span class="sc">::</span><span class="fu">here</span>(<span class="st">'data/database-files/'</span>),</span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>           <span class="at">db =</span> <span class="fu">neon_db</span>(<span class="at">dir =</span> db_path, <span class="at">read_only =</span> <span class="cn">FALSE</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Once these initial files are downloaded and added to the database, these objects are uploaded to the bucket. This is accomplished by first exporting the database as parquet files to a temporary directory:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="co"># create a temporary directory for the export parquet files</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>export_dir <span class="ot">=</span> <span class="fu">file.path</span>(<span class="fu">tempdir</span>(), <span class="st">'parquet'</span>)</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="co"># export the local parquet file structure to the local database</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a><span class="fu">neon_export_db</span>(<span class="at">dir =</span> export_dir,</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>               <span class="at">db =</span> <span class="fu">neon_db</span>(<span class="at">dir =</span> here<span class="sc">::</span><span class="fu">here</span>(<span class="st">'data/database-files/'</span>)))</span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a><span class="co"># we can check the files in the temporary directory for uploading</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a><span class="fu">list.files</span>(export_dir,</span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>           <span class="at">recursive =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>           <span class="at">full.names =</span> <span class="cn">TRUE</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>We then set the specifications of the s3 bucket. This bucket is publicly readable:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="co"># set the s3 bucket specs </span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>bucket <span class="ot">=</span> <span class="st">"neonsizedata-392202703749-us-east-2-an"</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>prefix <span class="ot">=</span> <span class="st">"neonstore/parquet"</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="fu">neon_sync_db</span>(<span class="at">s3 =</span> s3,</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>             <span class="at">dir =</span> export_dir)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>We can view the files available on the s3 bucket using the <code>aws.s3</code> package to view the contents.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(aws.s3)</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="fu">get_bucket</span>(<span class="at">bucket =</span> bucket,</span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>           <span class="at">prefix =</span> prefix)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>And we can connect to the s3 bucket to perform actions locally by connecting to the remote bucket:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>s3 <span class="ot">=</span> arrow<span class="sc">::</span><span class="fu">s3_bucket</span>(<span class="at">bucket =</span> <span class="fu">paste0</span>(bucket,<span class="st">"/"</span>,prefix,<span class="st">"/"</span>))</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>remote <span class="ot">=</span> <span class="fu">neon_remote_db</span>(<span class="at">bucket =</span> s3)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>and then reading in a file from the remote connection.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="fu">neon_remote</span>(</span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">table =</span> <span class="st">"inv_taxonomyProcessed-basic"</span>, </span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">product =</span> <span class="st">"DP1.20120.001"</span>,</span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">db =</span> remote</span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>  )  <span class="sc">%&gt;%</span></span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">collect</span>() <span class="sc">%&gt;%</span> </span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">glimpse</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Rows: 354,176
+Columns: 52
+$ uid                      &lt;chr&gt; "7f6e67d4-88e4-4b24-9f4e-85181f1a5dad", "a990…
+$ domainID                 &lt;chr&gt; "D14", "D14", "D14", "D14", "D14", "D14", "D1…
+$ siteID                   &lt;chr&gt; "SYCA", "SYCA", "SYCA", "SYCA", "SYCA", "SYCA…
+$ namedLocation            &lt;chr&gt; "SYCA.AOS.reach", "SYCA.AOS.reach", "SYCA.AOS…
+$ collectDate              &lt;dttm&gt; 2026-01-21 11:25:00, 2026-01-21 11:25:00, 20…
+$ identifiedDate           &lt;date&gt; 2026-02-19, 2026-02-19, 2026-02-20, 2026-02-…
+$ sampleID                 &lt;chr&gt; "SYCA.20260121.SURBER.3", "SYCA.20260121.SURB…
+$ sampleCode               &lt;chr&gt; "A00000495253", "A00000495255", "A00000495254…
+$ acceptedTaxonID          &lt;chr&gt; "GASSP1", "SIMSP1", "THISP2", "PHYSP20", "SIM…
+$ targetTaxaPresent        &lt;chr&gt; "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", …
+$ scientificName           &lt;chr&gt; "Gastropoda sp.", "Simulium sp.", "Thienemann…
+$ morphospeciesID          &lt;chr&gt; NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, N…
+$ taxonRank                &lt;chr&gt; "class", "genus", "genus", "genus", "genus", …
+$ phylum                   &lt;chr&gt; "Mollusca", "Arthropoda", "Arthropoda", "Moll…
+$ subphylum                &lt;chr&gt; NA, "Hexapoda", "Hexapoda", NA, "Hexapoda", "…
+$ class                    &lt;chr&gt; "Gastropoda", "Insecta", "Insecta", "Gastropo…
+$ subclass                 &lt;chr&gt; NA, "Pterygota", "Pterygota", NA, "Pterygota"…
+$ infraclass               &lt;chr&gt; NA, "Neoptera", "Neoptera", NA, "Neoptera", "…
+$ superorder               &lt;chr&gt; NA, "Holometabola", "Holometabola", NA, "Holo…
+$ order                    &lt;chr&gt; NA, "Diptera", "Diptera", "Basommatophora", "…
+$ suborder                 &lt;chr&gt; NA, "Nematocera", "Nematocera", NA, "Nematoce…
+$ infraorder               &lt;chr&gt; NA, "Culicomorpha", "Culicomorpha", NA, "Culi…
+$ superfamily              &lt;chr&gt; NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, N…
+$ family                   &lt;chr&gt; NA, "Simuliidae", "Chironomidae", "Physidae",…
+$ subfamily                &lt;chr&gt; NA, "Simuliinae", "Orthocladiinae", NA, "Simu…
+$ tribe                    &lt;chr&gt; NA, "Simuliini", NA, NA, "Simuliini", NA, "Pe…
+$ subtribe                 &lt;chr&gt; NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, N…
+$ genus                    &lt;chr&gt; NA, "Simulium", "Thienemanniella", "Physella"…
+$ specificEpithet          &lt;chr&gt; "sp.", "sp.", "sp.", "sp.", "sp.", "sp.", "sp…
+$ infraspecificEpithet     &lt;chr&gt; NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, N…
+$ invertebrateLifeStage    &lt;chr&gt; "larva", "larva", "larva", "larva", "larva", …
+$ sizeClass                &lt;dbl&gt; 1, 5, 1, 2, 5, 2, 2, 1, 4, 2, 3, 1, 7, 2, 2, …
+$ sizeCategory             &lt;chr&gt; NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, N…
+$ individualCount          &lt;dbl&gt; 6, 10, 29, 2, 1, 14, 1, 1, 6, 1, 1, 1, 1, 1, …
+$ subsamplePercent         &lt;dbl&gt; 100, 20, 100, 100, 100, 100, 100, 100, 100, 1…
+$ estimatedTotalCount      &lt;dbl&gt; 6, 50, 29, 2, 1, 14, 1, 1, 6, 1, 1, 1, 5, 1, …
+$ immatureSpecimen         &lt;chr&gt; "N", "N", "N", "N", "N", "N", "N", "N", "N", …
+$ indeterminateSpecies     &lt;chr&gt; "N", "N", "N", "N", "N", "N", "N", "N", "N", …
+$ taxonRankQualifier       &lt;chr&gt; NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, N…
+$ sampleCondition          &lt;chr&gt; "damaged, affecting taxonomy", "condition OK"…
+$ distinctTaxon            &lt;chr&gt; "N", "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y", …
+$ taxonDatabaseID          &lt;dbl&gt; 69459, 126774, 129182, 76698, 126774, 129182,…
+$ taxonDatabaseName        &lt;chr&gt; "ITIS", "ITIS", "ITIS", "ITIS", "ITIS", "ITIS…
+$ identificationQualifier  &lt;chr&gt; NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, N…
+$ identificationReferences &lt;chr&gt; "Thorp and Covich 2001", "Merritt and Cummins…
+$ qcChecked                &lt;chr&gt; "N", "Y", "N", "N", "N", "N", "N", "N", "N", …
+$ laboratoryName           &lt;chr&gt; "EcoAnalysts Inc.", "EcoAnalysts Inc.", "EcoA…
+$ identifiedBy             &lt;chr&gt; "A. Navesky", "A. Navesky", "S. Rice-Marshall…
+$ identificationRemarks    &lt;chr&gt; NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, N…
+$ identificationHistoryID  &lt;chr&gt; NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, N…
+$ dataQF                   &lt;chr&gt; NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, N…
+$ file                     &lt;chr&gt; "NEON.D14.SYCA.DP1.20120.001.inv_taxonomyProc…</code></pre>
+</div>
+</div>
 
 
+</section>
 
 </main> <!-- /main -->
 <script id="quarto-html-after-body" type="application/javascript">

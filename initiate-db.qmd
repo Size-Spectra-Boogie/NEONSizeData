@@ -1,5 +1,111 @@
 ---
-title: "initiate-db"
+title: "Initiate s3 database"
 format: html
 ---
 
+## Introduction
+
+```{r init, echo=FALSE, warning=FALSE, message=FALSE}
+here::i_am('code/initiate-data.Rmd')
+knitr::opts_chunk$set(echo = TRUE, eval = FALSE, warning = FALSE, message = FALSE)
+library(neonstore)
+library(magrittr)
+
+```
+
+This script outlines the process to automate the updating of a working database for new files released by NEON. This process uses the `neonstore` package to manage data file download and storage for specific NEON data releases that form the underlying derived data products for size spectra analysis in NEON streams. The database of up-to-date files is stored locally on a single computer and the updating of data files is automated approximately every 6 months through github actions outlined in the `.github/workflows` folder . For downstream analysis, the s3 database will serve as the working data source.
+
+To establish the initial database `neonstore` was used to download stream macroinvertebrate and fish data products. Initial files were downloaded into the local database directory and uploaded to the s3 bucket using functions in the `neonstore` package.
+
+```{r package setup}
+library(neonstore)
+library(arrow)
+
+```
+
+Using the `neon_download()` function we can automate the download into a pre-existing folder using established credentials. In the automated script, this is handled with the env variable `${{ github.workspace}}/data/database-files`. The data products for download are controlled with the `dps` object. Then they are added to the database with `neon_store()`
+
+```{r update inverts, eval = FALSE, echo=TRUE}
+
+streamsites=c("HOPB", "LEWI", "POSE", "CUPE",
+              "GUIL", "KING", "MCDI", "LECO",
+              "WALK", "MAYF", "ARIK", "BLUE",
+              "PRIN", "BLDE", "COMO", "WLOU",
+              "SYCA", "REDB", "MART", "MCRA",
+              "BIGC", "TECR", "OKSR", "CARI")
+
+db_path = here::here('data/database-files/')
+
+dps = c("DP1.20120.001","DP1.20107.001","DP1.20190.001")
+
+neon_download(product = dps,
+              site = streamsites,
+              dir = db_path)
+
+neon_store(dir = here::here('data/database-files/'),
+           db = neon_db(dir = db_path, read_only = FALSE))
+              
+```
+
+Once these initial files are downloaded and added to the database, these objects are uploaded to the s3 bucket. This is accomplished by first exporting the database as parquet files to a temporary directory:
+
+```{r export local database, eval = FALSE, echo=TRUE}
+
+# create a temporary directory for the export parquet files
+export_dir = file.path(tempdir(), 'parquet')
+
+# export the local parquet file structure to the local database
+neon_export_db(dir = export_dir,
+               db = neon_db(dir = here::here('data/database-files/')))
+
+# we can check the files in the temporary directory for uploading
+list.files(export_dir,
+           recursive = TRUE,
+           full.names = TRUE)
+```
+
+We then set the specifications of the s3 bucket. This bucket is publicly readable:
+
+```{r set bucket specs, eval = TRUE, echo = TRUE}
+
+# set the s3 bucket specs 
+bucket = "neonsizedata-392202703749-us-east-2-an"
+prefix = "neonstore/parquet"
+```
+
+```{r connect s3}
+
+neon_sync_db(s3 = s3,
+             dir = export_dir)
+```
+
+We can view the files available on the s3 bucket using the `aws.s3` package to view the contents.
+
+```{r view bucket}
+
+library(aws.s3)
+get_bucket(bucket = bucket,
+           prefix = prefix)
+```
+
+And we can connect to the s3 bucket to perform actions locally by connecting to the remote bucket:
+
+```{r connect remote bucket, eval = TRUE, echo =TRUE}
+
+s3 = arrow::s3_bucket(bucket = paste0(bucket,"/",prefix,"/"))
+
+remote = neon_remote_db(bucket = s3)
+
+```
+
+and then reading in a file from the remote connection.
+
+```{r read fish files, eval = TRUE, echo = TRUE}
+neon_remote(
+  table = "inv_taxonomyProcessed-basic", 
+  product = "DP1.20120.001",
+  db = remote
+  )  %>%
+  dplyr::collect() %>% 
+  dplyr::glimpse()
+```

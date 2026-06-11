@@ -10,6 +10,12 @@ website:
         file: index.qmd
       - text: "Initial Data Setup"
         file: initiate-db.qmd
+      - text: "Perform local analyses"
+        file: local-analysis.qmd
+      - text: "Stream macroinvertebrates"
+        file: get-neon-inverts.qmd
+      - text: "Stream fish"
+        file: get-neon-fish.qmd
     right:
       - icon: github
         href: https://github.com/Size-Spectra-Boogie/NEONSizeData
