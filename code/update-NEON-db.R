@@ -25,16 +25,26 @@ neon_download(product = dps,
               site = streamsites,
               dir = db_path)
 
+#only download the 15-min aggregated discharge, when available
+neon_download(product = "DP4.00130.001",
+              site = streamsites,
+              table = "csd_continuousDischarge-basic",
+              dir = db_path)
+
 neon_store(dir = here::here('data/database-files/'),
-           site = streamsites,
            db = neon_db(dir = db_path, read_only = FALSE))
 
 # create a temporary directory for the export parquet files
 export_dir = file.path(tempdir(), 'parquet')
 
-# export the local parquet file structure to the local database
+# export the local parquet file structure to the local temporary database
 neon_export_db(dir = export_dir,
                db = neon_db(dir = here::here('data/database-files/')))
+
+
+list.files(export_dir,
+           recursive = TRUE,
+           full.names = TRUE)
 
 
 s3_specs = readRDS(here::here('data/repo-objs/s3_specs.rds'))
@@ -44,4 +54,4 @@ s3 = arrow::s3_bucket(bucket = paste0(s3_specs$bucket,"/",s3_specs$prefix,"/"))
 neon_sync_db(s3 = s3,
              dir = export_dir)
 
-db_update_date = saveRDS(Sys.Date(), here::here('data/repo-objs/db_update_date.rds'))
+saveRDS(Sys.Date(), here::here('data/repo-objs/db_update_date.rds'))

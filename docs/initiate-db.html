@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>initiate-db – NEONSizeData</title>
+<title>Initiate s3 database – NEONSizeData</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -130,6 +130,18 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <a class="nav-link active" href="./initiate-db.html" aria-current="page"> 
 <span class="menu-text">Initial Data Setup</span></a>
   </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="./local-analysis.html"> 
+<span class="menu-text">Perform local analyses</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="./get-neon-inverts.html"> 
+<span class="menu-text">Stream macroinvertebrates</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="./get-neon-fish.html"> 
+<span class="menu-text">Stream fish</span></a>
+  </li>  
 </ul>
             <ul class="navbar-nav navbar-nav-scroll ms-auto">
   <li class="nav-item compact">
@@ -154,7 +166,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
-<h1 class="title">initiate-db</h1>
+<h1 class="title">Initiate s3 database</h1>
 </div>
 
 
@@ -173,8 +185,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 <section id="introduction" class="level2">
 <h2 class="anchored" data-anchor-id="introduction">Introduction</h2>
-<p>This script outlines the process to automate the updating of a duckdb database for new file released by NEON. This process uses the <code>neonstore</code> package to manage data file download and storage for NEON data releases. The database of up-to-date files are stored within the <code>data/database-files/</code> folder. The updating of data files will be automated approximately every 6 months through github actions. This will allow locally running scripts to convert the data into usable formats for size spectra analysis.</p>
-<p>To establish the initial database <code>neonstore</code> was used to download stream macroinvertebrate and fish data products. We first set the local database directory (e.g., C:/Users/jj0895/OneDrive - UNT System/Projects/Size-Spectra-Boogie/NEONSizeData/data/database-files) and pass this directly to the <code>neon_download()</code> function.</p>
+<p>This script outlines the process to automate the updating of a working database for new files released by NEON. This process uses the <code>neonstore</code> package to manage data file download and storage for specific NEON data releases that form the underlying derived data products for size spectra analysis in NEON streams. The database of up-to-date files is stored locally on a single computer and the updating of data files is automated approximately every 6 months through github actions outlined in the <code>.github/workflows</code> folder . For downstream analysis, the s3 database will serve as the working data source.</p>
+<p>To establish the initial database <code>neonstore</code> was used to download stream macroinvertebrate and fish data products. Initial files were downloaded into the local database directory and uploaded to the s3 bucket using functions in the <code>neonstore</code> package.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(neonstore)</span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(arrow)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
@@ -193,12 +205,13 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>dps <span class="ot">=</span> <span class="fu">c</span>(<span class="st">"DP1.20120.001"</span>,<span class="st">"DP1.20107.001"</span>,<span class="st">"DP1.20190.001"</span>)</span>
 <span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a><span class="fu">neon_download</span>(<span class="at">product =</span> dps,</span>
-<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>              <span class="at">dir =</span> db_path)</span>
-<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a><span class="fu">neon_store</span>(<span class="at">dir =</span> here<span class="sc">::</span><span class="fu">here</span>(<span class="st">'data/database-files/'</span>),</span>
-<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>           <span class="at">db =</span> <span class="fu">neon_db</span>(<span class="at">dir =</span> db_path, <span class="at">read_only =</span> <span class="cn">FALSE</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>              <span class="at">site =</span> streamsites,</span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>              <span class="at">dir =</span> db_path)</span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a><span class="fu">neon_store</span>(<span class="at">dir =</span> here<span class="sc">::</span><span class="fu">here</span>(<span class="st">'data/database-files/'</span>),</span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>           <span class="at">db =</span> <span class="fu">neon_db</span>(<span class="at">dir =</span> db_path, <span class="at">read_only =</span> <span class="cn">FALSE</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-<p>Once these initial files are downloaded and added to the database, these objects are uploaded to the bucket. This is accomplished by first exporting the database as parquet files to a temporary directory:</p>
+<p>Once these initial files are downloaded and added to the database, these objects are uploaded to the s3 bucket. This is accomplished by first exporting the database as parquet files to a temporary directory:</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="co"># create a temporary directory for the export parquet files</span></span>
 <span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>export_dir <span class="ot">=</span> <span class="fu">file.path</span>(<span class="fu">tempdir</span>(), <span class="st">'parquet'</span>)</span>
@@ -212,27 +225,25 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>           <span class="at">recursive =</span> <span class="cn">TRUE</span>,</span>
 <span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>           <span class="at">full.names =</span> <span class="cn">TRUE</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="fu">neon_sync_db</span>(<span class="at">s3 =</span> s3,</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>             <span class="at">dir =</span> export_dir)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
 <p>We then set the specifications of the s3 bucket. This bucket is publicly readable:</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="co"># set the s3 bucket specs </span></span>
-<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>bucket <span class="ot">=</span> <span class="st">"neonsizedata-392202703749-us-east-2-an"</span></span>
-<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>prefix <span class="ot">=</span> <span class="st">"neonstore/parquet"</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-</div>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="fu">neon_sync_db</span>(<span class="at">s3 =</span> s3,</span>
-<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>             <span class="at">dir =</span> export_dir)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="co"># set the s3 bucket specs </span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>bucket <span class="ot">=</span> <span class="st">"neonsizedata-392202703749-us-east-2-an"</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>prefix <span class="ot">=</span> <span class="st">"neonstore/parquet"</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <p>We can view the files available on the s3 bucket using the <code>aws.s3</code> package to view the contents.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(aws.s3)</span>
-<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="fu">get_bucket</span>(<span class="at">bucket =</span> bucket,</span>
-<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>           <span class="at">prefix =</span> prefix)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="fu">get_bucket</span>(<span class="at">bucket =</span> s3_specs<span class="sc">$</span>bucket,</span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>           <span class="at">prefix =</span> s3_specs<span class="sc">$</span>prefix)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <p>And we can connect to the s3 bucket to perform actions locally by connecting to the remote bucket:</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>s3 <span class="ot">=</span> arrow<span class="sc">::</span><span class="fu">s3_bucket</span>(<span class="at">bucket =</span> <span class="fu">paste0</span>(bucket,<span class="st">"/"</span>,prefix,<span class="st">"/"</span>))</span>
-<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>remote <span class="ot">=</span> <span class="fu">neon_remote_db</span>(<span class="at">bucket =</span> s3)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>remote <span class="ot">=</span> <span class="fu">neon_remote_db</span>(<span class="at">bucket =</span> s3)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <p>and then reading in a file from the remote connection.</p>
 <div class="cell">
@@ -244,7 +255,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">collect</span>() <span class="sc">%&gt;%</span> </span>
 <span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">glimpse</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>Rows: 354,176
+<pre><code>Rows: 363,728
 Columns: 52
 $ uid                      &lt;chr&gt; "7f6e67d4-88e4-4b24-9f4e-85181f1a5dad", "a990…
 $ domainID                 &lt;chr&gt; "D14", "D14", "D14", "D14", "D14", "D14", "D1…
